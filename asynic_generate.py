@@ -30,10 +30,8 @@ class GPT:
             str: generated response
         """
         output = self.API_ERROR_OUTPUT
-        print(f"enter {conv[-1]['content'][-20:]}")
         for _ in range(self.API_MAX_RETRY):
             try:
-                print(f"gen {conv[-1]['content'][-20:]}")
                 response = await self.client.chat.completions.create(
                     model=self.model_name,
                     messages=conv,
@@ -49,7 +47,6 @@ class GPT:
                 await asyncio.sleep(random.uniform(1, self.API_RETRY_SLEEP))
 
             await asyncio.sleep(self.API_QUERY_SLEEP)
-        print(f"exit {conv[-1]['content'][-20:]}")
         return output
 
     async def batched_generate(
@@ -261,8 +258,6 @@ class LanguageModel:
             prompt_list = [copy.deepcopy(history) for _ in range(len(query))]
             for p, q in zip(prompt_list, query):
                 p.append({"role": self.USR, "content": q})
-            for p in prompt_list:
-                print(p)
             outputs = await self.__model.batched_generate(
                 prompt_list, max_n_tokens, temperature, top_p
             )
