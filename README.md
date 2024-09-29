@@ -12,6 +12,7 @@
 - [vllm](https://github.com/vllm-project/vllm)
 - openai
 - anthropic
+- tqdm
 
 ## Usage
 

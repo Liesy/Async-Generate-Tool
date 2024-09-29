@@ -1,5 +1,6 @@
 import asyncio, random, copy
 import openai, anthropic
+from tqdm import tqdm
 
 
 class GPT:
@@ -7,7 +8,7 @@ class GPT:
     API_ERROR_OUTPUT = "$ERROR$"
     API_QUERY_SLEEP = 1
     API_MAX_RETRY = 10
-    API_TIMEOUT = 20
+    API_TIMEOUT = 300
 
     def __init__(self, model_name, api_key, base_url):
         self.model_name = model_name
@@ -19,6 +20,7 @@ class GPT:
         max_n_tokens: int,
         temperature: float,
         top_p: float,
+        tqdm_bar: tqdm,
     ):
         """
         Args:
@@ -26,6 +28,7 @@ class GPT:
             max_n_tokens: int, max number of tokens to generate
             temperature: float, temperature for sampling
             top_p: float, top p for sampling
+            tqdm_bar: tqdm, progress bar object to update
         Returns:
             str: generated response
         """
@@ -47,6 +50,7 @@ class GPT:
                 await asyncio.sleep(random.uniform(1, self.API_RETRY_SLEEP))
 
             await asyncio.sleep(self.API_QUERY_SLEEP)
+        tqdm_bar.update()
         return output
 
     async def batched_generate(
@@ -56,10 +60,12 @@ class GPT:
         temperature: float,
         top_p: float = 1.0,
     ):
-        coroutines = [
-            self.generate(conv, max_n_tokens, temperature, top_p) for conv in convs_list
-        ]
-        outputs = await asyncio.gather(*coroutines)
+        with tqdm(total=len(convs_list), desc=f"{self.model_name} batch") as tqdm_bar:
+            coroutines = [
+                self.generate(conv, max_n_tokens, temperature, top_p, tqdm_bar)
+                for conv in convs_list
+            ]
+            outputs = await asyncio.gather(*coroutines)
         return outputs
 
 
@@ -68,7 +74,7 @@ class Claude:
     API_ERROR_OUTPUT = "$ERROR$"
     API_QUERY_SLEEP = 1
     API_MAX_RETRY = 10
-    API_TIMEOUT = 20
+    API_TIMEOUT = 300
 
     def __init__(self, model_name, api_key, base_url) -> None:
         self.model_name = model_name
@@ -83,13 +89,15 @@ class Claude:
         max_n_tokens: int,
         temperature: float,
         top_p: float,
+        tqdm_bar: tqdm,
     ):
         """
         Args:
-            conv: List of conversations
+            conv: List of dictionaries, OpenAI API format
             max_n_tokens: int, max number of tokens to generate
             temperature: float, temperature for sampling
             top_p: float, top p for sampling
+            tqdm_bar: tqdm, progress bar object to update
         Returns:
             str: generated response
         """
@@ -111,6 +119,7 @@ class Claude:
                 await asyncio.sleep(random.uniform(1, self.API_RETRY_SLEEP))
 
             await asyncio.sleep(self.API_QUERY_SLEEP)
+        tqdm_bar.update()
         return output
 
     async def batched_generate(
@@ -120,10 +129,12 @@ class Claude:
         temperature: float,
         top_p: float = 1.0,
     ):
-        coroutines = [
-            self.generate(conv, max_n_tokens, temperature, top_p) for conv in convs_list
-        ]
-        outputs = await asyncio.gather(*coroutines)
+        with tqdm(total=len(convs_list), desc=f"{self.model_name} batch") as tqdm_bar:
+            coroutines = [
+                self.generate(conv, max_n_tokens, temperature, top_p, tqdm_bar)
+                for conv in convs_list
+            ]
+            outputs = await asyncio.gather(*coroutines)
         return outputs
 
 
@@ -132,7 +143,7 @@ class vLLM:
     API_ERROR_OUTPUT = "$ERROR$"
     API_QUERY_SLEEP = 1
     API_MAX_RETRY = 10
-    API_TIMEOUT = 20
+    API_TIMEOUT = 300
 
     def __init__(self, model_name, api_key, base_url):
         self.model_name = model_name
@@ -144,6 +155,7 @@ class vLLM:
         max_n_tokens: int,
         temperature: float,
         top_p: float,
+        tqdm_bar: tqdm,
     ):
         """
         Args:
@@ -151,6 +163,7 @@ class vLLM:
             max_n_tokens: int, max number of tokens to generate
             temperature: float, temperature for sampling
             top_p: float, top p for sampling
+            tqdm_bar: tqdm, progress bar object to update
         Returns:
             str: generated response
         """
@@ -172,6 +185,7 @@ class vLLM:
                 await asyncio.sleep(random.uniform(1, self.API_RETRY_SLEEP))
 
             await asyncio.sleep(self.API_QUERY_SLEEP)
+        tqdm_bar.update()
         return output
 
     async def batched_generate(
@@ -181,10 +195,12 @@ class vLLM:
         temperature: float,
         top_p: float = 1.0,
     ):
-        coroutines = [
-            self.generate(conv, max_n_tokens, temperature, top_p) for conv in convs_list
-        ]
-        outputs = await asyncio.gather(*coroutines)
+        with tqdm(total=len(convs_list), desc=f"{self.model_name} batch") as tqdm_bar:
+            coroutines = [
+                self.generate(conv, max_n_tokens, temperature, top_p, tqdm_bar)
+                for conv in convs_list
+            ]
+            outputs = await asyncio.gather(*coroutines)
         return outputs
 
 
