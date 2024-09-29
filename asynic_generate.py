@@ -21,6 +21,7 @@ class GPT:
         temperature: float,
         top_p: float,
         tqdm_bar: tqdm,
+        semaphore: asyncio.Semaphore,
     ):
         """
         Args:
@@ -32,26 +33,35 @@ class GPT:
         Returns:
             str: generated response
         """
-        output = self.API_ERROR_OUTPUT
-        for _ in range(self.API_MAX_RETRY):
-            try:
-                response = await self.client.chat.completions.create(
-                    model=self.model_name,
-                    messages=conv,
-                    max_tokens=max_n_tokens,
-                    temperature=temperature,
-                    top_p=top_p,
-                    timeout=self.API_TIMEOUT,
-                )
-                output = response.choices[0].message.content
-                break
-            except openai.OpenAIError as e:
-                print(type(e), e, conv)
-                await asyncio.sleep(random.uniform(1, self.API_RETRY_SLEEP))
+        async with semaphore:
+            output = self.API_ERROR_OUTPUT
+            for _ in range(self.API_MAX_RETRY):
+                try:
+                    response = await self.client.chat.completions.create(
+                        model=self.model_name,
+                        messages=conv,
+                        max_tokens=max_n_tokens,
+                        temperature=temperature,
+                        top_p=top_p,
+                        timeout=self.API_TIMEOUT,
+                    )
+                    output = response.choices[0].message.content
+                    break
+                except openai.OpenAIError as e1:
+                    print(type(e1), e1, conv)
+                    await asyncio.sleep(random.uniform(1, self.API_RETRY_SLEEP))
+                except asyncio.CancelledError as e2:
+                    print(type(e2), e2)
+                    raise
+                except asyncio.TimeoutError as e3:
+                    print(type(e3), e3)
+                    raise
+                except Exception as e4:
+                    print(type(e4), e4)
 
-            await asyncio.sleep(self.API_QUERY_SLEEP)
-        tqdm_bar.update()
-        return output
+                await asyncio.sleep(self.API_QUERY_SLEEP)
+            tqdm_bar.update()
+            return output
 
     async def batched_generate(
         self,
@@ -60,9 +70,12 @@ class GPT:
         temperature: float,
         top_p: float = 1.0,
     ):
+        semaphore = asyncio.Semaphore(500)
         with tqdm(total=len(convs_list), desc=f"{self.model_name} batch") as tqdm_bar:
             coroutines = [
-                self.generate(conv, max_n_tokens, temperature, top_p, tqdm_bar)
+                self.generate(
+                    conv, max_n_tokens, temperature, top_p, tqdm_bar, semaphore
+                )
                 for conv in convs_list
             ]
             outputs = await asyncio.gather(*coroutines)
@@ -90,6 +103,7 @@ class Claude:
         temperature: float,
         top_p: float,
         tqdm_bar: tqdm,
+        semaphore: asyncio.Semaphore,
     ):
         """
         Args:
@@ -101,26 +115,35 @@ class Claude:
         Returns:
             str: generated response
         """
-        output = self.API_ERROR_OUTPUT
-        for _ in range(self.API_MAX_RETRY):
-            try:
-                completion = await self.model.messages.create(
-                    model=self.model_name,
-                    max_tokens=max_n_tokens,
-                    messages=conv,
-                    temperature=temperature,
-                    top_p=top_p,
-                    timeout=self.API_TIMEOUT,
-                )
-                output = completion.content[0].text
-                break
-            except anthropic.APIError as e:
-                print(type(e), e, conv)
-                await asyncio.sleep(random.uniform(1, self.API_RETRY_SLEEP))
+        async with semaphore:
+            output = self.API_ERROR_OUTPUT
+            for _ in range(self.API_MAX_RETRY):
+                try:
+                    completion = await self.model.messages.create(
+                        model=self.model_name,
+                        max_tokens=max_n_tokens,
+                        messages=conv,
+                        temperature=temperature,
+                        top_p=top_p,
+                        timeout=self.API_TIMEOUT,
+                    )
+                    output = completion.content[0].text
+                    break
+                except anthropic.APIError as e1:
+                    print(type(e1), e1, conv)
+                    await asyncio.sleep(random.uniform(1, self.API_RETRY_SLEEP))
+                except asyncio.CancelledError as e2:
+                    print(type(e2), e2)
+                    raise
+                except asyncio.TimeoutError as e3:
+                    print(type(e3), e3)
+                    raise
+                except Exception as e4:
+                    print(type(e4), e4)
 
-            await asyncio.sleep(self.API_QUERY_SLEEP)
-        tqdm_bar.update()
-        return output
+                await asyncio.sleep(self.API_QUERY_SLEEP)
+            tqdm_bar.update()
+            return output
 
     async def batched_generate(
         self,
@@ -129,9 +152,12 @@ class Claude:
         temperature: float,
         top_p: float = 1.0,
     ):
+        semaphore = asyncio.Semaphore(500)
         with tqdm(total=len(convs_list), desc=f"{self.model_name} batch") as tqdm_bar:
             coroutines = [
-                self.generate(conv, max_n_tokens, temperature, top_p, tqdm_bar)
+                self.generate(
+                    conv, max_n_tokens, temperature, top_p, tqdm_bar, semaphore
+                )
                 for conv in convs_list
             ]
             outputs = await asyncio.gather(*coroutines)
@@ -156,6 +182,7 @@ class vLLM:
         temperature: float,
         top_p: float,
         tqdm_bar: tqdm,
+        semaphore: asyncio.Semaphore,
     ):
         """
         Args:
@@ -167,26 +194,36 @@ class vLLM:
         Returns:
             str: generated response
         """
-        output = self.API_ERROR_OUTPUT
-        for _ in range(self.API_MAX_RETRY):
-            try:
-                response = await self.client.chat.completions.create(
-                    model=self.model_name,
-                    messages=conv,
-                    max_tokens=max_n_tokens,
-                    temperature=temperature,
-                    top_p=top_p,
-                    timeout=self.API_TIMEOUT,
-                )
-                output = response.choices[0].message.content
-                break
-            except openai.OpenAIError as e:
-                print(type(e), e, conv)
-                await asyncio.sleep(random.uniform(1, self.API_RETRY_SLEEP))
+        async with semaphore:
+            output = self.API_ERROR_OUTPUT
+            for _ in range(self.API_MAX_RETRY):
+                try:
+                    response = await self.client.chat.completions.create(
+                        model=self.model_name,
+                        messages=conv,
+                        max_tokens=max_n_tokens,
+                        temperature=temperature,
+                        top_p=top_p,
+                        timeout=self.API_TIMEOUT,
+                    )
+                    output = response.choices[0].message.content
+                    break
+                except openai.OpenAIError as e1:
+                    print(type(e1), e1, conv)
+                    await asyncio.sleep(random.uniform(1, self.API_RETRY_SLEEP))
+                except asyncio.CancelledError as e2:
+                    print(type(e2), e2)
+                    raise
+                except asyncio.TimeoutError as e3:
+                    print(type(e3), e3)
+                    raise
+                except Exception as e4:
+                    print(type(e4), e4)
+                    break
 
-            await asyncio.sleep(self.API_QUERY_SLEEP)
-        tqdm_bar.update()
-        return output
+                await asyncio.sleep(self.API_QUERY_SLEEP)
+            tqdm_bar.update()
+            return output
 
     async def batched_generate(
         self,
@@ -195,9 +232,12 @@ class vLLM:
         temperature: float,
         top_p: float = 1.0,
     ):
+        semaphore = asyncio.Semaphore(500)
         with tqdm(total=len(convs_list), desc=f"{self.model_name} batch") as tqdm_bar:
             coroutines = [
-                self.generate(conv, max_n_tokens, temperature, top_p, tqdm_bar)
+                self.generate(
+                    conv, max_n_tokens, temperature, top_p, tqdm_bar, semaphore
+                )
                 for conv in convs_list
             ]
             outputs = await asyncio.gather(*coroutines)
@@ -258,33 +298,27 @@ class LanguageModel:
         top_p: float = 1.0,
     ) -> tuple[str | list[str], list[dict[str, str]]]:
 
-        self.ret_output, self.ret_history = None, None
         history = copy.deepcopy(self.chat_template) if history is None else history
 
-        async def str_entrance():
-            prompt = copy.deepcopy(history)
-            prompt.append({"role": self.USR, "content": query})
-            output = await self.__model.generate(
-                prompt, max_n_tokens, temperature, top_p
-            )
-            self.ret_output = output
-            self.ret_history = prompt.append({"role": self.BOT, "content": output})
-
-        async def list_entrance():
-            prompt_list = [copy.deepcopy(history) for _ in range(len(query))]
-            for p, q in zip(prompt_list, query):
-                p.append({"role": self.USR, "content": q})
-            outputs = await self.__model.batched_generate(
-                prompt_list, max_n_tokens, temperature, top_p
-            )
-            for p, r in zip(prompt_list, outputs):
-                p.append({"role": self.BOT, "content": r})
-            self.ret_output = outputs
-            self.ret_history = prompt_list
+        event_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(event_loop)
 
         if isinstance(query, str):
-            asyncio.run(str_entrance())
+            prompt = copy.deepcopy(history)
+            prompt.append({"role": self.USR, "content": query})
+            output = event_loop.run_until_complete(
+                self.__model.generate(prompt, max_n_tokens, temperature, top_p)
+            )
+            prompt.append({"role": self.BOT, "content": output})
         else:
-            asyncio.run(list_entrance())
+            prompt = [copy.deepcopy(history) for _ in range(len(query))]
+            for p, q in zip(prompt, query):
+                p.append({"role": self.USR, "content": q})
+            output = event_loop.run_until_complete(
+                self.__model.batched_generate(prompt, max_n_tokens, temperature, top_p)
+            )
+            for p, r in zip(prompt, output):
+                p.append({"role": self.BOT, "content": r})
 
-        return self.ret_output, self.ret_history
+        event_loop.close()
+        return output, prompt
