@@ -3,6 +3,9 @@ import openai, anthropic
 from tqdm import tqdm
 
 
+COROUTINE_NUM = 500
+
+
 class GPT:
     API_RETRY_SLEEP = 10
     API_ERROR_OUTPUT = "$ERROR$"
@@ -70,7 +73,7 @@ class GPT:
         temperature: float,
         top_p: float = 1.0,
     ):
-        semaphore = asyncio.Semaphore(500)
+        semaphore = asyncio.Semaphore(COROUTINE_NUM)
         with tqdm(total=len(convs_list), desc=f"{self.model_name} batch") as tqdm_bar:
             coroutines = [
                 self.generate(
@@ -152,7 +155,7 @@ class Claude:
         temperature: float,
         top_p: float = 1.0,
     ):
-        semaphore = asyncio.Semaphore(500)
+        semaphore = asyncio.Semaphore(COROUTINE_NUM)
         with tqdm(total=len(convs_list), desc=f"{self.model_name} batch") as tqdm_bar:
             coroutines = [
                 self.generate(
@@ -232,7 +235,7 @@ class vLLM:
         temperature: float,
         top_p: float = 1.0,
     ):
-        semaphore = asyncio.Semaphore(500)
+        semaphore = asyncio.Semaphore(COROUTINE_NUM)
         with tqdm(total=len(convs_list), desc=f"{self.model_name} batch") as tqdm_bar:
             coroutines = [
                 self.generate(
@@ -320,5 +323,4 @@ class LanguageModel:
             for p, r in zip(prompt, output):
                 p.append({"role": self.BOT, "content": r})
 
-        event_loop.close()
         return output, prompt
