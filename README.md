@@ -16,7 +16,7 @@
 
 ## Usage
 
-see `example.ipynb` for more details.
+see `example.py` for more details.
 
 ## Introduction
 
