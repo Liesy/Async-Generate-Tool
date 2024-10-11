@@ -10,6 +10,7 @@ api_config = {
         "base_url": "",
         "api_key": "",
     },
+    "glm": {"api_key": ""},
     "Llama-3.1-8B-Instruct": {"base_url": "http://0.0.0.0:8000/v1", "api_key": "EMPTY"},
     "Qwen2-7B-Instruct": {"base_url": "http://0.0.0.0:8006/v1", "api_key": "EMPTY"},
 }

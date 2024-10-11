@@ -1,5 +1,5 @@
 import asyncio, random, copy
-import openai, anthropic
+import openai, anthropic, zhipuai
 from tqdm import tqdm
 
 
@@ -167,6 +167,91 @@ class Claude:
         return outputs
 
 
+class GLM:
+    API_RETRY_SLEEP = 10
+    API_ERROR_OUTPUT = "$ERROR$"
+    API_QUERY_SLEEP = 1
+    API_MAX_RETRY = 10
+    API_TIMEOUT = 300
+
+    def __init__(self, model_name, api_key):
+        self.model_name = model_name
+        self.client = zhipuai.ZhipuAI(api_key=api_key)
+
+    async def generate(
+        self,
+        conv: list[dict],
+        max_n_tokens: int,
+        temperature: float,
+        top_p: float,
+        tqdm_bar: tqdm,
+        semaphore: asyncio.Semaphore,
+    ):
+        async def check_status(task_id):
+            while True:
+                result_response = (
+                    self.client.chat.asyncCompletions.retrieve_completion_result(
+                        id=task_id
+                    )
+                )
+                task_status = result_response.task_status
+                if task_status == "SUCCESS":
+                    return result_response
+                elif task_status == "FAIL":
+                    raise RuntimeError("Task failed")
+                else:
+                    await asyncio.sleep(0.01)
+
+        async with semaphore:
+            output = self.API_ERROR_OUTPUT
+            for _ in range(self.API_MAX_RETRY):
+                try:
+                    task = self.client.chat.asyncCompletions.create(
+                        model=self.model_name,
+                        messages=conv,
+                        max_tokens=max_n_tokens,
+                        temperature=temperature,
+                        top_p=top_p,
+                        timeout=self.API_TIMEOUT,
+                    )
+                    response = await check_status(task.id)
+                    output = response.choices[0].message.content
+                    break
+                except zhipuai.ZhipuAIError as e1:
+                    print(type(e1), e1, conv)
+                    await asyncio.sleep(random.uniform(1, self.API_RETRY_SLEEP))
+                except asyncio.CancelledError as e2:
+                    print(type(e2), e2)
+                    raise
+                except asyncio.TimeoutError as e3:
+                    print(type(e3), e3)
+                    raise
+                except Exception as e4:
+                    print(type(e4), e4)
+
+                await asyncio.sleep(self.API_QUERY_SLEEP)
+            tqdm_bar.update()
+            return output
+
+    async def batched_generate(
+        self,
+        convs_list: list[list[dict]],
+        max_n_tokens: int,
+        temperature: float,
+        top_p: float = 1.0,
+    ):
+        semaphore = asyncio.Semaphore(COROUTINE_NUM)
+        with tqdm(total=len(convs_list), desc=f"{self.model_name} batch") as tqdm_bar:
+            coroutines = [
+                self.generate(
+                    conv, max_n_tokens, temperature, top_p, tqdm_bar, semaphore
+                )
+                for conv in convs_list
+            ]
+            outputs = await asyncio.gather(*coroutines)
+        return outputs
+
+
 class vLLM:
     API_RETRY_SLEEP = 10
     API_ERROR_OUTPUT = "$ERROR$"
@@ -276,6 +361,11 @@ class LanguageModel:
                 self.model_name,
                 self.api_config["anthropic"]["api_key"],
                 self.api_config["anthropic"]["base_url"],
+            )
+        elif "glm" in self.model_name.lower():
+            lm = GLM(
+                self.model_name,
+                self.api_config["glm"]["api_key"],
             )
         elif (
             "llama" in self.model_name.lower()

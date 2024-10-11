@@ -12,6 +12,7 @@
 - [vllm](https://github.com/vllm-project/vllm)
 - openai
 - anthropic
+- zhipuai
 - tqdm
 
 ## Usage
@@ -35,7 +36,7 @@ see `example.py` for more details.
 
 晚上心血来潮写了个便捷的小工具
 
-1. 用LanguageModel类，传入模型名称和API的配置，就能直接把字符串扔进去使用里面的get_response函数生成回复，不用再看openai和anthropic的文档写一堆东西了
+1. 用LanguageModel类，传入模型名称和API的配置，就能直接把字符串扔进去使用里面的get_response函数生成回复，不用再看openai、anthropic和智谱的文档写一堆东西了
 2. 支持大规模数据的异步生成，效率提高，且避免了多进程可能出现的问题（长文本达到api的limit，导致同批的短文本也反复请求失败）
 3. 可以配合vLLM或者sglang使用，开源模型也能cover住
 
