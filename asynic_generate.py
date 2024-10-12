@@ -187,21 +187,6 @@ class GLM:
         tqdm_bar: tqdm,
         semaphore: asyncio.Semaphore,
     ):
-        async def check_status(task_id):
-            while True:
-                result_response = (
-                    self.client.chat.asyncCompletions.retrieve_completion_result(
-                        id=task_id
-                    )
-                )
-                task_status = result_response.task_status
-                if task_status == "SUCCESS":
-                    return result_response
-                elif task_status == "FAIL":
-                    raise RuntimeError("Task failed")
-                else:
-                    await asyncio.sleep(0.01)
-
         async with semaphore:
             output = self.API_ERROR_OUTPUT
             for _ in range(self.API_MAX_RETRY):
@@ -214,7 +199,17 @@ class GLM:
                         top_p=top_p,
                         timeout=self.API_TIMEOUT,
                     )
-                    response = await check_status(task.id)
+                    await asyncio.sleep(1e-3)
+                    while True:
+                        response = self.client.chat.asyncCompletions.retrieve_completion_result(
+                            id=task.id
+                        )
+                        if response.task_status == "SUCCESS":
+                            break
+                        elif response.task_status == "FAIL":
+                            raise RuntimeError("Task failed")
+                        else:
+                            await asyncio.sleep(1e-3)
                     output = response.choices[0].message.content
                     break
                 except zhipuai.ZhipuAIError as e1:
