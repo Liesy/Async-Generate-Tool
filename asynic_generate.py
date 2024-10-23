@@ -362,13 +362,8 @@ class LanguageModel:
                 self.model_name,
                 self.api_config["glm"]["api_key"],
             )
-        elif (
-            "llama" in self.model_name.lower()
-            or "vicuna" in self.model_name.lower()
-            or "wizard" in self.model_name.lower()
-            or "qwen" in self.model_name.lower()
-        ):
-            lm = vLLM(
+        elif self.api_config.get(self.model_name, None) is not None:
+            lm = GPT(
                 self.model_name,
                 self.api_config[self.model_name]["api_key"],
                 self.api_config[self.model_name]["base_url"],
@@ -392,10 +387,14 @@ class LanguageModel:
         asyncio.set_event_loop(event_loop)
 
         if isinstance(query, str):
+            semaphore = asyncio.Semaphore(1)
+            tqdm_bar = tqdm(total=1, desc=f"{self.model_name} batch")
             prompt = copy.deepcopy(history)
             prompt.append({"role": self.USR, "content": query})
             output = event_loop.run_until_complete(
-                self.__model.generate(prompt, max_n_tokens, temperature, top_p)
+                self.__model.generate(
+                    prompt, max_n_tokens, temperature, top_p, tqdm_bar, semaphore
+                )
             )
             prompt.append({"role": self.BOT, "content": output})
         else:
